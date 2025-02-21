@@ -1,0 +1,9 @@
+[default.extend-words]
+Ded = "Ded"
+rsource = "rsource"
+
+[default.extend-identifiers]
+ObjectCreater = "ObjectCreater"
+
+[files]
+extend-exclude = ["vendor/", "go.mod"]

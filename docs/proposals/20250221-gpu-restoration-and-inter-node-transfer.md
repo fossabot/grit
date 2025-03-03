@@ -15,7 +15,7 @@ see-also:
 
 ## Table of Contents
 
-- [GRIT: GPU state restoration via inter-node transmission](#cpu-restoration-and-inter-node-transfer)
+- [GRIT: GPU state restoration via inter-node transmission](#grit-gpu-state-restoration-via-inter-node-transmission)
   - [Table of Contents](#table-of-contents)
   - [Glossary](#glossary)
   - [Summary](#summary)

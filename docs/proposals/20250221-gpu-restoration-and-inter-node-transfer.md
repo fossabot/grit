@@ -64,9 +64,9 @@ All of these scenairos, GPU workloads should be snapshotted and then restarted f
 
 ### GRIT Architecture
 
-Users can checkpoint/restore a specified pod through two CR resources, one Checkpoint CRD instnce and one Restore CRD instance.
+Users can checkpoint/restore a specified pod through two CR resources, one Checkpoint CRD instance and one Restore CRD instance.
 The checkpoint data will be stored on the specified location (like azure cloud storage). If the auto migration field is set in the checkpoint CR, the target pod
-will be deleted, and new pod will be created and restored using with checkpointed data. The detailed workflow is showed in the following feature:
+will be deleted, and a new pod will be created and restored using with checkpointed data. The detailed workflow is shown in the following feature:
 
 ![grit-arch](../img/grit-arch.png)
 
@@ -77,43 +77,43 @@ GRIT components:
 
 **Checkpoint Workflow**
 
-1. Create Checkpoint cr resource:
-  - CR Validation:
-    - The status of specified pod needs to be running.
-    - The status of node where pod is running needs to be healthy.
-    - The state of the pvc (if specified) for storing checkpoint data needs to be ready.
-  - Reconciler:
-    - The hash value of pod spec will be stored in Checkpoint cr status.
-    - Checkpoint status will be updated to CheckpointPending.
+1. Create Checkpoint CR resource:
+    - CR Validation:
+      - The status of the specified pod needs to be running.
+      - The status of the node where the specified pod is running needs to be healthy.
+      - The state of the pvc (if specified) for storing the checkpoint data needs to be ready.
+    - Reconciler:
+      - The hash value of the pod spec will be stored in Checkpoint cr status.
+      - Checkpoint status will be updated to CheckpointPending.
 2. Create Agent Job:
-  - GRIT controller will create GRIT Agent job (includes volume configurations specified in the checkpoint CR) to the specified node where the target Pod is running.
-  - Checkpoint CR status will be updated to Checkpointing after GRIT Agent pod becomes running. The status becomes failed if the GRIT Agent failed to start.
+    - GRIT controller will create the GRIT Agent job (includes volume configurations specified in the checkpoint CR) to the node where the target Pod is running.
+    - Checkpoint CR status will be updated to Checkpointing after GRIT Agent pod becomes running.
 3. Checkpoint Pod and Sync data to storage:
-  - GRIT Agent calls GRIT runtime to checkpoint the target pod and store the data into the volume configured in the agent pod.
-  - GRIT Agent will update Checkpoint status to Checkpointed and update Checkpoint.Status.DataPath with the destination path when data copy completes (user does not need to specify the path, GRIT agent will specify one).
+    - GRIT Agent calls GRIT runtime to checkpoint the target pod and store the data into the volume configured in the agent pod.
+    - GRIT Agent will update Checkpoint status to Checkpointed and update Checkpoint.Status.DataPath with the destination path when data copy completes (user does not need to specify the path, GRIT agent will specify one).
   
-Moreover, If Auto Migration field is set in the Checkpoint CR, GRIT controller will create a corresponding Restore cr resource and delete the target pod after checkpointing is completed.
+Moreover, if the `autoMigration` field is set in the Checkpoint CR, GRIT controller will create a corresponding Restore CR and delete the target pod after checkpointing is completed.
 
 **Restore Workflow**
 
-1. Create Restore cr resource:
-  - CR Validation:
-    - The status of the linked related Checkpoint CR needs to be Checkpointed.
-  - Reconciler:
-    - The status of Restore CR will be updated to RestorePending.
+1. Create Restore cr resource (manually or automatically):
+    - CR Validation:
+      - The status of the linked Checkpoint CR needs to be Checkpointed.
+    - Reconciler:
+      - The status of Restore CR will be updated to RestorePending.
 2. Select the target Pod:
-  - Pod mutation webhook:
-    - For every new Pod that matches the label selector in the Restore CR, check if the pod spec hash matches the one saved in the Checkpoint CR's status and if the `targetPod` field is empty. If both conditions are true, adding a specic **magic** annoation (e.g., the name of the restore CR) in pod annoation, and update the Resotre CR's status to Restoring and record the pod name in the `targetPod` field in the status.
-    - The Restore.Status.TargetPod field is introduced to prevent selecting multiple pods for one Restore resource.
+    - Pod mutation webhook:
+      - For every new Pod that matches the label selector in the Restore CR, check if the pod spec hash matches the one saved in the Checkpoint CR's status. If matches, adding a special **magic** annotation (e.g., the name of the restore CR) in pod annotation if the `targetPod` field in the Checkpoint CR's status is empty. Finally, update the Restore CR's status to Restoring and record the pod name in the `targetPod` field in the status.
+      - The Restore.Status.TargetPod field is introduced to prevent selecting multiple pods for one Restore CR.
 3. Create Agent Job:
-    - GRIT controller will watch for the target Pod and create a GRIT Agent job to the specified node after the pod is scheduled.
+    - GRIT controller will watch for the target Pod and create a GRIT Agent job to the Pod's running node after the pod is scheduled.
     - Update Restore CR status to Restoring after GRIT Agent pod becomes running.
-4. Sync data to local disk:
-  - Data syncer in GRIT Agent job will download checkpointed data from cloud storage to local disk immediately once the pod is running.
+4. Sync checkpoint data:
+    - Data syncer in GRIT Agent job will download checkpoint data from the volume specified in the checkpoint CR to local disk immediately once the pod is running.
 5. Restore the Pod:
-  - GRIT runtime will block in create sandbox call if the **magic** annoation is avaiable in the Pod, waits for the agent pod to download all checkpoint data, signaled by a sentinel file. 
-  - GRIT runtime will intercept the create container call to restore the container from the checkpoint data.
-  - GRIT runtime will update Restore status to Restored when pod restoration completed successfully.
+    - GRIT runtime will block in `CreateSandbox` call if the **magic** annotation is available in the Pod, waiting for the agent pod to download all checkpoint data, signaled by a sentinel file. 
+    - GRIT runtime will intercept the `CreateContainer` call to restore the container from the checkpoint data.
+    - GRIT Agent job pod will update Restore status to Restored when pod restoration completed successfully.
 
 ### State Machines
 

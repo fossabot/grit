@@ -12,25 +12,29 @@ env:
   GO_VERSION: '1.22.3'
 
 jobs:
-  typosChecker:
-    name: Spell Check with Typos
+  check-files:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Actions Repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+
       - name: Check spelling with custom config file
         uses: crate-ci/typos@v1.29.9
         with:
           config: ./.github/typos.toml
-  linkChecker:
-    name: Markdown Link Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Actions Repository
-        uses: actions/checkout@v4
+
       - name: Link Checker
         uses: lycheeverse/lychee-action@v2
         with:
           args: --base . --verbose --no-progress './**/*.md'
           fail: false
+
+      - name: Verify Mod
+        run: make verify-mod
+
+      - name: Verify Manifests
+        run: make verify-manifests
 

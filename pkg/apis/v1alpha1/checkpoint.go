@@ -26,7 +26,7 @@ type CheckpointSpec struct {
 	// Moreover, if no enough disk space under this path for storing checkpoint data, checkpoint will fail into failed state.
 	// +optional
 	HostPath *corev1.HostPathVolumeSource `json:"hostPath,omitempty"`
-	// RemoteStorage is used to specify cloud storage for storing checkpoint data and share data across nodes.
+	// VolumeClaim is used to specify cloud storage for storing checkpoint data and share data across nodes.
 	// End user should ensure related pvc/pv resource exist and ready before creating Checkpoint resource.
 	// +optional
 	VolumeClaim *corev1.PersistentVolumeClaim `json:"volumeClaim,omitempty"`

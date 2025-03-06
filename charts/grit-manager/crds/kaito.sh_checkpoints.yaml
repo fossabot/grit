@@ -90,7 +90,7 @@ spec:
                 type: string
               volumeClaim:
                 description: |-
-                  RemoteStorage is used to specify cloud storage for storing checkpoint data and share data across nodes.
+                  VolumeClaim is used to specify cloud storage for storing checkpoint data and share data across nodes.
                   End user should ensure related pvc/pv resource exist and ready before creating Checkpoint resource.
                 properties:
                   apiVersion:

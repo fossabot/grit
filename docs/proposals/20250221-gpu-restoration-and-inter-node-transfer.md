@@ -149,27 +149,27 @@ type CheckpointSpec struct {
   // Checkpoint result will be stored under this path on the node.
   // If no path is set, default value /data/grit/pods will be used.
   // Moreover, if no enough disk space under this path for storing checkpoint data, checkpoint will fail into failed state.
-  LocalStoragePath string
-  // RemoteStorage is used to specify cloud storage for storing checkpoint data and share data across nodes.
+  HostPath *corev1.HostPathVolumeSource
+  // VolumeClaim is used to specify cloud storage for storing checkpoint data and share data across nodes.
   // End user should ensure related pvc/pv resource exist and ready before creating Checkpoint resource.
-  RemoteStorage *corev1.PersistentVolumeClaim
-  // EnableMigratingPod is used for migrating pod across nodes. If true is set, related Restore resource will be created automatically, then checkpointed pod will be deleted by grit-manager, and a new pod will be created automatically by the pod owner(like Deployment and Job). this new pod will be selected as restoration pod and checkpointed data will be used for restoring new pod.
-  // This field can be set to true for the following two cases:
-  // 1. owner reference of pod is Deployment or Job.
-  // 2. RemoteStorage field is specified as a cloud storage, this means checkpointed data can be shared across nodes.
-  EnableMigratingPod bool
+  VolumeClaim *corev1.PersistentVolumeClaim
+	// AutoMigration is used for migrating pod across nodes automatically. If true is set, related Restore resource will be created automatically, then checkpointed pod will be deleted by grit-manager, and a new pod will be created automatically by the pod owner(like Deployment and Job). this new pod will be selected as restoration pod and checkpointed data will be used for restoring new pod.
+	// This field can be set to true for the following two cases:
+	// 1. owner reference of pod is Deployment or Job.
+	// 2. VolumeClaim field is specified as a cloud storage, this means checkpointed data can be shared across nodes.
+  AutoMigration bool
 }
 
 type CheckpointStatus struct {
-  // PodHash is used for recording hash value of pod spec.
+  // PodSpecHash is used for recording hash value of pod spec.
   // Checkpointed data can be used to restore for pod with same hash value.
-  PodHash string
+  PodSpecHash string
   // state machine of Checkpoint Phase: Pending --> Checkpointing --> Checkpointed or Failed.
   Phase CheckpointPhase
   // current state of pod checkpoint
   Conditions []metav1.Condition
-  // checkpointed data is stored under this path. and the data in this path will be used for restoring pod.
-  CheckpointedDataPath string
+  // checkpointed data is stored under this path in the storage volume. and the data in this path will be used for restoring pod.
+  DataPath string
 }
 
 type Checkpoint struct {
@@ -192,17 +192,15 @@ type RestoreSpec struct {
   // CheckpointName is used to specify Checkpoint resource. only Checkpoint in the same namespace of Restore will be selected.
   // Only checkpointed Checkpoint will be accepted, and checkpointed data will be used for restoring pod.
   CheckpointName string
-  // OwnerRef is used to specify owner reference of restoration pod.
-  // Pod will be selected as restoration pod only when pod is created by owner and pod has the same hash value corresponding to Checkpoint.
-  OwnerRef metav1.OwnerReference
-  // The timeout of selecting pod for restoration.
-  // if PodSelectionTimeoutSeconds is nil, Restore will never timeout and always wait for restoration pod created.
-  PodSelectionTimeoutSeconds *int64
+	// Pod will be selected as target pod for restoring with following conditions:
+	// 1. pod has labels which match this selector
+	// 2. pod spec has the same hash value corresponding to Checkpoint.
+	Selector *metav1.LabelSelector
 }
 
 type RestoreStatus struct {
-  // the pod specified by RestorationPod is selected for restoring.
-  RestorationPod string
+  // the pod specified by TargetPod is selected for restoring.
+  TargetPod string
   // state machine of Restore Phase: Pending --> Restoring --> Restored or Failed.
   Phase RestorePhase
   // current state of pod restore

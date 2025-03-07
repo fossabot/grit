@@ -1,5 +1,5 @@
 ---
-title: GRIT: GPU workload restoration via inter-node checkpoint transmission
+title: GRIT: GPU workload checkpointing and restoration
 authors:
   - "@rambohe-ch"
   - "@zhuangqh"
@@ -11,7 +11,7 @@ status: provisional
 see-also:
 ---
 
-# GRIT: GPU workload restoration via inter-node checkpoint transmission
+# GRIT: GPU workload checkpointing and restoration
 
 ## Table of Contents
 

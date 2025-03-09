@@ -69,10 +69,15 @@ verify-manifests: manifests
 lint: $(GOLANGCI_LINT)
 	$(GOLANGCI_LINT) run -v
 
-.PHONY: build-grit-manager
-build-grit-manager:
+.PHONY: bin/grit-manager
+bin/grit-manager:
 	@mkdir -p $(OUTPUT_DIR)
 	go build -ldflags "$(LDFLAGS)" -o $(OUTPUT_DIR)/grit-manager ./cmd/grit-manager/grit-manager.go
+
+.PHONY: bin/containerd-shim-grit-v1
+bin/containerd-shim-grit-v1: cmd/containerd-shim-grit-v1
+	@mkdir -p $(OUTPUT_DIR)
+	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o $(OUTPUT_DIR)/containerd-shim-grit-v1 -tags "urfave_cli_no_docs no_grpc" ./cmd/containerd-shim-grit-v1
 
 .PHONY: clean
 clean:

@@ -14,8 +14,7 @@ spec:
     listKind: CheckpointList
     plural: checkpoints
     shortNames:
-    - cp
-    - cps
+    - ckpt
     singular: checkpoint
   scope: Namespaced
   versions:

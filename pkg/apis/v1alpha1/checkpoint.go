@@ -57,7 +57,7 @@ type CheckpointStatus struct {
 
 // Checkpoint is the Schema for the Checkpoints API
 // +kubebuilder:object:root=true
-// +kubebuilder:resource:path=checkpoints,scope=Namespaced,categories=girt,shortName={cp,cps}
+// +kubebuilder:resource:path=checkpoints,scope=Namespaced,categories=girt,shortName={ckpt}
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="Pod",type="string",JSONPath=".spec.podName",description="The pod will be checkpointed"

@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-REGISTRY ?= YOUR_REGISTRY
+REGISTRY ?= ramboacr.azurecr.io
 VERSION ?= v0.0.1
 IMG_TAG ?= $(subst v,,$(VERSION))
 GRIT_ROOT ?= $(shell pwd)
@@ -60,9 +60,6 @@ manifests: controller-gen install-yq ## Generate WebhookConfiguration, ClusterRo
 	mv charts/grit-manager/templates/manifests.yaml charts/grit-manager/templates/webhooks-auto-generated.yaml
 	yq eval -i 'select(.kind=="MutatingWebhookConfiguration") .metadata.name = "grit-manager-mutating-webhook-configuration"' charts/grit-manager/templates/webhooks-auto-generated.yaml
 	yq eval -i 'select(.kind == "ValidatingWebhookConfiguration") .metadata.name = "grit-manager-validating-webhook-configuration"' charts/grit-manager/templates/webhooks-auto-generated.yaml
-	$(CONTROLLER_GEN) rbac:roleName=grit-agent-clusterrole paths="./pkg/gritagent/..." output:rbac:artifacts:config=charts/grit-agent/templates
-	mv charts/grit-agent/templates/role.yaml charts/grit-agent/templates/clusterrole-auto-generated.yaml
-
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.

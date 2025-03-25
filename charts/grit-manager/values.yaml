@@ -1,12 +1,20 @@
+log:
+  level: 5
+
 replicaCount: 1
 certDuration: 87600h
 nameOverrider: ""
 
 image:
-  registry: kaito-project
-  repository: grit-manager
-  tag: ""
-  pullSecrets: []
+  gritmanager:
+    registry: ramboacr.azurecr.io
+    repository: grit-manager
+    tag: 0.0.1-efecb8
+    pullSecrets: []
+  gritagent:
+    registry: ramboacr.azurecr.io
+    repository: grit-agent
+    tag: 0.0.1-4801ff
 
 ports:
   metrics: 10351

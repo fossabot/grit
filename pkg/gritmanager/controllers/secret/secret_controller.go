@@ -234,7 +234,7 @@ func (c *Controller) updateWebhookConfigurations(ctx context.Context, caCert []b
 }
 
 func caCertChanged(old, new []byte) bool {
-	return base64.StdEncoding.EncodeToString(old) == base64.StdEncoding.EncodeToString(new)
+	return base64.StdEncoding.EncodeToString(old) != base64.StdEncoding.EncodeToString(new)
 }
 
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=list;watch;get;update

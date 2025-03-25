@@ -17,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	corev1listers "k8s.io/client-go/listers/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/kaito-project/grit/pkg/apis/v1alpha1"
 )
@@ -24,9 +25,9 @@ import (
 const (
 	GritAgentConfigMapName = "grit-agent-config"
 	HostPathKey            = "host-path"
-	GritAgentYamlKey       = "grit-agent.yaml"
-	HostRootDirInContainer = "/mnt/host-data/"
-	PvcRootDirInContainer  = "/mnt/pvc-data/"
+	GritAgentYamlKey       = "grit-agent-template.yaml"
+	HostDirInContainer     = "/mnt/host-data/"
+	PvcDirInContainer      = "/mnt/pvc-data/"
 )
 
 type AgentManager struct {
@@ -34,7 +35,7 @@ type AgentManager struct {
 	lister    corev1listers.ConfigMapLister
 }
 
-// +kubebuilder:rbac:groups="",resources=configmaps,verbs=list;watch
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=list;watch;get
 
 func NewAgentManager(ns string, lister corev1listers.ConfigMapLister) *AgentManager {
 	return &AgentManager{
@@ -57,8 +58,8 @@ func (m *AgentManager) GenerateGritAgentJob(ctx context.Context, ckpt *v1alpha1.
 		return nil, err
 	}
 
-	if len(strings.TrimSpace(cm.Data[HostPathKey])) == 0 || len(cm.Data[GritAgentYamlKey]) == 0 {
-		return nil, errors.New("There is no host-path or grit-agent.yaml in grit-agent-config")
+	if cm.Data == nil || len(strings.TrimSpace(cm.Data[HostPathKey])) == 0 || len(cm.Data[GritAgentYamlKey]) == 0 {
+		return nil, errors.New("There is no host-path or grit-agent-template.yaml in grit-agent-config")
 	}
 
 	girtAgentJobTemplate := cm.Data[GritAgentYamlKey]
@@ -72,8 +73,9 @@ func (m *AgentManager) GenerateGritAgentJob(ctx context.Context, ckpt *v1alpha1.
 		templateCtx["jobName"] = restore.Name
 		templateCtx["nodeName"] = restore.Status.NodeName
 	}
+	log.FromContext(ctx).Info("template context", "context", templateCtx)
 
-	gritAgentJob, err := convertToGritAgentJob(girtAgentJobTemplate, templateCtx)
+	gritAgentJob, err := convertToGritAgentJob(ctx, girtAgentJobTemplate, templateCtx)
 	if err != nil {
 		return nil, err
 	} else if len(gritAgentJob.Spec.Template.Spec.Containers) != 1 {
@@ -88,58 +90,60 @@ func (m *AgentManager) GenerateGritAgentJob(ctx context.Context, ckpt *v1alpha1.
 		},
 	}
 
+	hostPath := filepath.Join(strings.TrimSpace(cm.Data[HostPathKey]), ckpt.Namespace, ckpt.Name)
 	hostStorage := corev1.Volume{
 		Name: "host-data",
 		VolumeSource: corev1.VolumeSource{
 			HostPath: &corev1.HostPathVolumeSource{
-				Path: strings.TrimSpace(cm.Data[HostPathKey]),
+				Path: hostPath,
 				Type: lo.ToPtr(corev1.HostPathDirectoryOrCreate),
 			},
 		},
 	}
 	gritAgentJob.Spec.Template.Spec.Volumes = append(gritAgentJob.Spec.Template.Spec.Volumes, pvcStorage, hostStorage)
 
-	action := "ckpt"
+	action := "checkpoint"
 	if restore != nil {
 		action = "restore"
 	}
-	hostPath := filepath.Join(HostRootDirInContainer, action)
-	pvcPath := filepath.Join(PvcRootDirInContainer, action)
+
 	volumeMounts := []corev1.VolumeMount{
 		{
 			Name:      "host-data",
-			MountPath: hostPath,
+			MountPath: HostDirInContainer,
 		},
 		{
 			Name:      "pvc-data",
-			MountPath: pvcPath,
+			MountPath: PvcDirInContainer,
 		},
 	}
-	c := gritAgentJob.Spec.Template.Spec.Containers[0]
+	c := &gritAgentJob.Spec.Template.Spec.Containers[0]
 	c.VolumeMounts = append(c.VolumeMounts, volumeMounts...)
 
 	// prepare command args, like src dir, dst dir, checkpoint, restore info.
 	args := map[string]string{
-		"src-dir":         hostPath,
-		"dst-dir":         pvcPath,
-		"namespace":       ckpt.Namespace,
-		"checkpoint-name": ckpt.Name,
+		"action":         action,
+		"src-dir":        HostDirInContainer,
+		"dst-dir":        filepath.Join(PvcDirInContainer, ckpt.Namespace, ckpt.Name),
+		"host-work-path": hostPath,
 	}
 
 	if restore != nil {
-		args["src-dir"] = pvcPath
-		args["dst-dir"] = hostPath
-		args["restore-name"] = restore.Name
+		args["src-dir"] = filepath.Join(PvcDirInContainer, ckpt.Namespace, ckpt.Name)
+		args["dst-dir"] = HostDirInContainer
 	}
 
 	for k, v := range args {
 		c.Args = append(c.Args, fmt.Sprintf("--%s=%s", k, v))
 	}
 
+	c.Env = append(c.Env, corev1.EnvVar{Name: "TARGET_NAMESPACE", Value: ckpt.Namespace}, corev1.EnvVar{Name: "TARGET_NAME", Value: ckpt.Spec.PodName})
 	return gritAgentJob, nil
 }
 
-func convertToGritAgentJob(templateStr string, context interface{}) (*batchv1.Job, error) {
+func convertToGritAgentJob(ctx context.Context, templateStr string, context map[string]string) (*batchv1.Job, error) {
+	log.FromContext(ctx).Info("template str", "job str", templateStr)
+	log.FromContext(ctx).Info("context", "job context", context)
 	resourceTemplate, err := template.New("grit").Option("missingkey=zero").Parse(templateStr)
 	if err != nil {
 		return nil, err
@@ -149,16 +153,20 @@ func convertToGritAgentJob(templateStr string, context interface{}) (*batchv1.Jo
 	if err := resourceTemplate.Execute(w, context); err != nil {
 		return nil, err
 	}
+	log.FromContext(ctx).Info("grit agent bytes", "job string", w.String())
 
 	jobObj, _, err := scheme.Codecs.UniversalDeserializer().Decode(w.Bytes(), nil, nil)
 	if err != nil {
 		return nil, err
+	} else if jobObj == nil {
+		return nil, errors.New("failed to decode grit agent job object")
 	}
 
 	gritAgentJob, ok := jobObj.(*batchv1.Job)
 	if !ok {
 		return nil, errors.New("couldn't convert grit agent job")
 	}
+	log.FromContext(ctx).Info("grit agent job", "job", gritAgentJob)
 
 	return gritAgentJob, nil
 }

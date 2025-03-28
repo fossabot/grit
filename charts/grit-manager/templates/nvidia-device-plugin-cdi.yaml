@@ -2,13 +2,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: kaito-nvidia-device-plugin-daemonset-cdi
-  namespace: kube-workspace
-  labels:
-    kubernetes.azure.com/managedby: aks
-    app: ai-toolchain-operator
-    app.kubernetes.io/name: ai-toolchain-operator
-    app.kubernetes.io/component: ai-toolchain-operator
-    app.kubernetes.io/part-of: ai-toolchain-operator
+  namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:
@@ -19,7 +13,6 @@ spec:
     metadata:
       labels:
         name: nvidia-device-plugin-ds
-        kubernetes.azure.com/managedby: aks
     spec:
       affinity:
         nodeAffinity:
@@ -54,6 +47,8 @@ spec:
               value: "false"
             - name: PASS_DEVICE_SPECS
               value: "true"
+            - name: DEVICE_LIST_STRATEGY
+              value: cdi-cri
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

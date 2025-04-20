@@ -1,14 +1,14 @@
 # GRIT: GPU workload checkpointing and restoration
 
-GRIT is a comprehensive solution designed to automate GPU workload migration within Kubernetes clusters. It enables users to capture the state of GPU workloads and restore them at a later time with minimal disruption.
+GRIT is an experimental solution designed to automate GPU workload cross node migration within Kubernetes clusters. It enables users to checkpoint the state of GPU workloads and restore them at a later time with no disruption.
 
 Key features include:
 
-- **Non-intrusive to Kubernetes core components**.
-- **No application code changes required** - Applications can be checkpointed and restored without altering their source code.
-- **Supports diverse workloads** – GRIT supports the migration of both pod-based workloads and standalone pods without necessitating changes to workload controller logic.
-- **Efficient and secure checkpoint distribution** – Checkpoints are distributed using custom Persistent Volumes (PVs), offering better efficiency and security compared to OCI-based checkpoint images.
-- **NVIDIA GPU workload support** – GRIT leverages [CRIU](https://github.com/checkpoint-restore/criu) and [cuda-checkpoint](https://github.com/NVIDIA/cuda-checkpoint) to enable checkpointing and restoration of NVIDIA GPU workloads.
+- **Least-intrusive to Kubernetes core components** - Currently, only containerd is slightly changed to support the new workflow.
+- **No application code changes** - Applications can be checkpointed and restored without altering their source code.
+- **Support Pod based migration** – GRIT supports the migration of all containers in a Pod.
+- **Efficient checkpoint distribution** – Checkpoints are distributed using custom Persistent Volumes (PVs), offering flexibility and efficiency compared to OCI-based checkpoint images.
+- **NVIDIA GPU workload support** – GRIT leverages [CRIU](https://github.com/checkpoint-restore/criu) and [cuda-checkpoint](https://github.com/NVIDIA/cuda-checkpoint) to enable checkpointing and restoration of NVIDIA GPU states.
 
 # Architecture
 
@@ -17,7 +17,7 @@ Key features include:
 The above diagram shows the architecture of GRIT. The main components are:
 - **GRIT-Manager**: The control-plane component that orchestrates all checkpointing and restoration workflows. It includes controllers and admission webhooks required for lifecycle management.
 - **GRIT-Agent**: It runs as Job Pod created by the GRIT-manager. It is responsible for transmitting checkpoint images and communication with GRIT-runtime.
-- **GRIT-runtime**: A pluggable container runtime sitting between `kubelet` and `containerd`, receiving control plane signal from GRIT-Agent. It ultimately calls CRIU tools to checkpoint and restore the container process.
+- **GRIT-runtime**: A modifiedi `containerd`, receiving control plane signal from GRIT-Agent. It ultimately calls CRIU tools to checkpoint and restore the container process. 
 
 # Quick start
 

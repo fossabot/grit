@@ -66,7 +66,7 @@ $ kubectl apply -f examples/checkpoint.yaml
 
 After checkpointing the target pod, the status of checkpoint CR is set to `Checkpointed`.
 
-When the original Pod is deleted, the newly created Pod will be annotated with a special annotation and the grit manager will create a "Restore" custom resource and use it to communicate with node agent for restoring the Pod from the checkpoint data.
+When the original Pod is deleted, the newly created Pod will be associated with a "Restore" custom resource (created manaully or automatically by the grit manager) and annotated with a special annotation. The grit agent will identify the Pod based on the annotation and restore the Pod from the checkpoint data.
 
 ## Live Demo
 [![](http://img.youtube.com/vi/eQwBUjCQNk4/0.jpg)](https://www.youtube.com/watch?v=eQwBUjCQNk4 "vc-kubecon-eu-2020")
